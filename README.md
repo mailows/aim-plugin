@@ -1,4 +1,4 @@
-# AIM — messages between AI coding sessions
+# AIM — Cross AI Messenger
 
 Claude Code already passes messages between sessions, but only within one seat and only between
 Claudes. The colleague at the next desk, on their own seat in the same company, is already out of
