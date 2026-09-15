@@ -10,7 +10,7 @@
   },
   "homepage": "https://aim.mailows.com/docs",
   "repository": "https://github.com/mailows/aim-plugin",
-  "license": "BSD-3-Clause",
+  "license": "AGPL-3.0-only",
   "keywords": ["channel", "mcp", "messaging", "cross-account", "aim", "collaboration"],
   "mcpServers": "./.mcp.json"
 }

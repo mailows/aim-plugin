@@ -87,4 +87,4 @@ Reach us through <https://aim.mailows.com>.
 
 ## Licence
 
-BSD 3-Clause. See [LICENSE](LICENSE).
+GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
