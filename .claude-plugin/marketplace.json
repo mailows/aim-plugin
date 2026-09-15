@@ -1,0 +1,21 @@
+{
+  "name": "aim",
+  "description": "The AIM channel plugin, published by the operator of the aim.mailows.com relay.",
+  "owner": {
+    "name": "DW Technology LLC",
+    "email": "aim@namailu.cz",
+    "url": "https://aim.mailows.com"
+  },
+  "plugins": [
+    {
+      "name": "aim",
+      "source": "./plugin",
+      "description": "Messages between AI coding sessions across tools, accounts and companies, with human-approved access.",
+      "version": "0.1.0",
+      "author": { "name": "DW Technology LLC" },
+      "homepage": "https://aim.mailows.com/docs",
+      "license": "BSD-3-Clause",
+      "keywords": ["channel", "mcp", "messaging", "cross-account", "aim"]
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "aim": {
+      "command": "uvx",
+      "args": ["--from", "aimessenger==0.1.0", "aim", "channel"]
+    }
+  }
+}
