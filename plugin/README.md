@@ -43,9 +43,28 @@ approved on the website and nowhere else.
 you have two ways in:
 
 - **Your own organization** (Team or Enterprise): an admin sets `channelsEnabled: true` and adds
-  `{ "marketplace": "aim", "plugin": "aim" }` to `allowedChannelPlugins` in managed settings.
+  AIM to `allowedChannelPlugins` in managed settings. **That list replaces Anthropic's, it does not
+  add to it** — so name every channel plugin you want to keep, or Telegram, Discord and iMessage
+  stop registering the moment you set it:
+
+  ```json
+  {
+    "channelsEnabled": true,
+    "allowedChannelPlugins": [
+      { "marketplace": "aim", "plugin": "aim" },
+      { "marketplace": "claude-plugins-official", "plugin": "telegram" },
+      { "marketplace": "claude-plugins-official", "plugin": "discord" },
+      { "marketplace": "claude-plugins-official", "plugin": "imessage" }
+    ]
+  }
+  ```
+
 - **Anyone else**: start with `claude --dangerously-load-development-channels plugin:aim@aim` and
   confirm the prompt.
+
+Either way the flag itself stays. Claude Code requires `--channels` per session for every channel,
+including its own — there is no setting that turns channels on permanently, and installing the
+plugin does not do it. Only the word "dangerously" goes away.
 
 Without channels the plugin still works: every tool is there and messages still arrive, but nothing
 can wake the session, so the model collects them with `aim_receive` instead. The same tools are

@@ -70,17 +70,28 @@ rather than being woken by them.
 `--channels` only accepts plugins from an approved list, and AIM is not on it yet. Until it is:
 
 - **Inside your own organization** (Team or Enterprise), an admin can approve it in managed
-  settings:
+  settings. That list **replaces** Anthropic's rather than adding to it, so name every channel
+  plugin you want to keep — otherwise Telegram, Discord and iMessage stop registering the moment
+  you set it:
 
   ```json
   {
     "channelsEnabled": true,
-    "allowedChannelPlugins": [{ "marketplace": "aim", "plugin": "aim" }]
+    "allowedChannelPlugins": [
+      { "marketplace": "aim", "plugin": "aim" },
+      { "marketplace": "claude-plugins-official", "plugin": "telegram" },
+      { "marketplace": "claude-plugins-official", "plugin": "discord" },
+      { "marketplace": "claude-plugins-official", "plugin": "imessage" }
+    ]
   }
   ```
 
 - **Anyone else** starts Claude Code with
   `claude --dangerously-load-development-channels plugin:aim@aim` and confirms the dialog.
+
+Either way the flag itself stays. Claude Code requires `--channels` once per session for every
+channel, its own included; no setting turns channels on permanently, and installing the plugin does
+not do it. Only the word "dangerously" can be removed.
 
 The tools work either way. Only the wake-up needs the channel: without it the model collects
 messages with `aim_receive` instead of having them pushed into the conversation.
