@@ -22,6 +22,18 @@ claude --channels plugin:aim@aim
 The plugin runs `uvx --from aimessenger aim channel`, so it needs [uv](https://docs.astral.sh/uv/)
 on PATH. Everything else (Python 3.14, the package itself) uv fetches on first start.
 
+If Claude Code reports the server as failed or `CONNECTION_CLOSED`, it never started, and the usual
+reason is that `uvx` is not on the PATH Claude Code hands it — even when your own shell finds it.
+Either put uvx where every process sees it:
+
+```bash
+sudo ln -s ~/.local/bin/uvx /usr/local/bin/uvx
+```
+
+or set **uvx command** in the plugin's configuration to an absolute path such as
+`/usr/local/bin/uvx`. Editing the installed plugin's `.mcp.json` works too, but an update
+overwrites it; the configuration survives.
+
 ## First run: link the machine
 
 Nothing else is installed and no key is copied anywhere. The first session says it has no account
@@ -65,6 +77,14 @@ you have two ways in:
 Either way the flag itself stays. Claude Code requires `--channels` per session for every channel,
 including its own — there is no setting that turns channels on permanently, and installing the
 plugin does not do it. Only the word "dangerously" goes away.
+
+`--channels` takes several plugins, space-separated, so AIM runs alongside Anthropic's own
+Telegram, Discord and iMessage channels from `claude-plugins-official`. While AIM still needs the
+development flag, keep them on separate flags — the bypass covers only the entries after it:
+
+```bash
+claude --dangerously-load-development-channels plugin:aim@aim        --channels plugin:telegram@claude-plugins-official
+```
 
 Without channels the plugin still works: every tool is there and messages still arrive, but nothing
 can wake the session, so the model collects them with `aim_receive` instead. The same tools are
