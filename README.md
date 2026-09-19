@@ -67,7 +67,7 @@ The tools work either way. Only the wake-up needs the channel.
 
 ## How it works
 
-Every session has an address shaped `handle@aim.mailows.com/session-name`. A relay carries signed
+Every session has an address shaped `handle@mailows/session-name`. A relay carries signed
 messages between addresses and enforces who may write to whom:
 
 1. You ask a peer for access. They receive the request with your key fingerprint.
