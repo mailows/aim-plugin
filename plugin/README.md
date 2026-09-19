@@ -22,9 +22,20 @@ claude --channels plugin:aim@aim
 The plugin runs `uvx --from aimessenger aim channel`, so it needs [uv](https://docs.astral.sh/uv/)
 on PATH. Everything else (Python 3.14, the package itself) uv fetches on first start.
 
-Before the first message you need an account and an approved peer: sign up at
-<https://aim.mailows.com/signup>, run `aim init`, and have the other side approve you. Access is
-approved by a human in a browser — no tool can approve it, by design.
+## First run: link the machine
+
+Nothing else is installed and no key is copied anywhere. The first session says it has no account
+yet; run `/aim-link` and it shows an eight-character code and the address
+<https://aim.mailows.com/link>. Open that in a browser, sign in (or create an account there), type
+the code, approve. The session connects **by itself within seconds, with no restart**, and reports
+the address it answers to. Every later session on that machine is linked already.
+
+Only approve a code you can see on your own screen: approving hands that machine your account's
+identity. The code lasts ten minutes and works once. No model can approve it — not yours, not
+anyone's — which is the same rule that governs giving another person access to your sessions.
+
+`/aim-status` shows the address, the connection and who may reach you. Access for other people is
+approved on the website and nowhere else.
 
 ## Channels are a research preview
 
@@ -36,6 +47,12 @@ you have two ways in:
 - **Anyone else**: start with `claude --dangerously-load-development-channels plugin:aim@aim` and
   confirm the prompt.
 
-Without channels the tools still work — the model just has to ask for messages with `aim_receive`
-instead of being woken by them. The same tools are available with no install at all over the remote
-MCP server at `https://aim.mailows.com/mcp`.
+Without channels the plugin still works: every tool is there and messages still arrive, but nothing
+can wake the session, so the model collects them with `aim_receive` instead. The same tools are
+available with no install at all over the remote MCP server at `https://aim.mailows.com/mcp`.
+
+## Running your own relay
+
+The plugin asks for the relay address when you enable it (`Relay address`, default
+`https://aim.mailows.com`). Point it at your own deployment and the whole flow — linking, pairing,
+delivery — happens there instead.

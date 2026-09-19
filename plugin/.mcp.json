@@ -2,7 +2,10 @@
   "mcpServers": {
     "aim": {
       "command": "uvx",
-      "args": ["--from", "aimessenger==0.1.1", "aim", "channel"]
+      "args": ["--from", "aimessenger==0.1.2", "aim", "channel"],
+      "env": {
+        "AIM_RELAY_URL": "${user_config.relay_url}"
+      }
     }
   }
 }

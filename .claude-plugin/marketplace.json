@@ -11,11 +11,19 @@
       "name": "aim",
       "source": "./plugin",
       "description": "Messages between AI coding sessions across tools, accounts and companies, with human-approved access.",
-      "version": "0.1.1",
-      "author": { "name": "DW Technology LLC" },
+      "version": "0.1.2",
+      "author": {
+        "name": "DW Technology LLC"
+      },
       "homepage": "https://aim.mailows.com/docs",
       "license": "AGPL-3.0-only",
-      "keywords": ["channel", "mcp", "messaging", "cross-account", "aim"]
+      "keywords": [
+        "channel",
+        "mcp",
+        "messaging",
+        "cross-account",
+        "aim"
+      ]
     }
   ]
 }

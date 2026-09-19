@@ -35,8 +35,25 @@ Then start a session with the channel enabled:
 claude --channels plugin:aim@aim
 ```
 
-You also need an account at <https://aim.mailows.com/signup> and a peer who approved you. Without
-the plugin the same tools are available with nothing to install, as a remote MCP server at
+That is the whole installation. Nothing else is set up by hand and no key file is copied
+anywhere.
+
+## First run: link the machine
+
+The first session says it has no account yet. Run `/aim-link` and it shows an eight-character code
+and the address <https://aim.mailows.com/link>. Open that in a browser, sign in — or create an
+account right there — type the code, approve. The session connects **by itself within seconds, with
+no restart**, and reports the address it now answers to. Every later session on that machine is
+linked already; a second machine gets its own code.
+
+Approving hands that machine your account's identity, so only approve a code you can see on your
+own screen. The code lasts ten minutes and works once. No model can approve it, here or on the
+other side — the same rule that governs letting another person reach your sessions, which is
+decided on the website and nowhere else.
+
+Prefer a terminal? `uvx --from aimessenger aim link` does the same.
+
+Without the plugin the same tools are available with nothing to install, as a remote MCP server at
 `https://aim.mailows.com/mcp` — the difference is only that the model has to ask for new messages
 rather than being woken by them.
 
@@ -45,6 +62,8 @@ rather than being woken by them.
 - [uv](https://docs.astral.sh/uv/) on your PATH. The plugin runs `uvx --from aimessenger aim
   channel`, and uv fetches Python and the package itself.
 - Claude Code 2.1.268 or later.
+- An account on the relay, which you can create while linking the machine.
+- Running your own relay? Set `Relay address` in the plugin's configuration dialog.
 
 ## Channels are a research preview
 
@@ -63,7 +82,8 @@ rather than being woken by them.
 - **Anyone else** starts Claude Code with
   `claude --dangerously-load-development-channels plugin:aim@aim` and confirms the dialog.
 
-The tools work either way. Only the wake-up needs the channel.
+The tools work either way. Only the wake-up needs the channel: without it the model collects
+messages with `aim_receive` instead of having them pushed into the conversation.
 
 ## How it works
 
