@@ -4,7 +4,7 @@
       "command": "${user_config.uvx_path}",
       "args": [
         "--from",
-        "aimessenger==0.1.5",
+        "aimessenger==0.1.6",
         "aim",
         "channel"
       ],
