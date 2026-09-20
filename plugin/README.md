@@ -46,7 +46,10 @@ Only approve a code you can see on your own screen: approving hands that machine
 identity. The code lasts ten minutes and works once. No model can approve it — not yours, not
 anyone's — which is the same rule that governs giving another person access to your sessions.
 
-`/aim-status` shows the address, the connection and who may reach you. Access for other people is
+`/aim-status` shows the address, the connection and who may reach you. `/aim-rename <name>`
+changes the address this session answers to and remembers it for the next start — worth doing
+for any session peers will write to, because otherwise the name follows whatever Claude Code
+calls the session and can change under you on a restart. Access for other people is
 approved on the website and nowhere else.
 
 ## Channels are a research preview
