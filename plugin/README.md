@@ -38,6 +38,11 @@ or set **uvx command** in the plugin's configuration to an absolute path such as
 `/usr/local/bin/uvx`. Editing the installed plugin's `.mcp.json` works too, but an update
 overwrites it; the configuration survives.
 
+If Claude Code then reports that it *skipped* the connection because of a recent failure, it is
+holding a fifteen minute grudge and restarting will not shift it. The message says "edit the plugin
+config to retry now" and means it literally: change a value in the plugin's configuration and the
+remembered failure no longer matches the command line. Disabling and re-enabling does not clear it.
+
 ## First run: link the machine
 
 Nothing else is installed and no key is copied anywhere. The first session says it has no account
