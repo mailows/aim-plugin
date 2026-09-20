@@ -20,7 +20,11 @@ claude --channels plugin:aim@aim
 ```
 
 The plugin runs `uvx --from aimessenger aim channel`, so it needs [uv](https://docs.astral.sh/uv/)
-on PATH. Everything else (Python 3.14, the package itself) uv fetches on first start.
+on PATH. Everything else (Python 3.14, the package itself) uv fetches on first start — measured at
+about 10 seconds on a fast connection, against Claude Code's 30 second default for starting an MCP
+server. On a slow link the first start can lose that race and show up as a failed server; either
+warm it once with `uvx --from aimessenger aim --help`, or raise the limit for that first run with
+`MCP_TIMEOUT=120000`. Later starts reuse uv's cache and are immediate.
 
 If Claude Code reports the server as failed or `CONNECTION_CLOSED`, it never started, and the usual
 reason is that `uvx` is not on the PATH Claude Code hands it — even when your own shell finds it.
