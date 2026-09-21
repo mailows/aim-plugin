@@ -11,7 +11,7 @@
       "name": "aim",
       "source": "./plugin",
       "description": "Messages between AI coding sessions across tools, accounts and companies, with human-approved access.",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "author": {
         "name": "DW Technology LLC"
       },

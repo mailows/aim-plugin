@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "aim": {
-      "command": "${user_config.uvx_path}",
+      "command": "uvx",
       "args": [
         "--from",
         "aimessenger==0.1.8",
