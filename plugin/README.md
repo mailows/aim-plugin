@@ -8,7 +8,7 @@ lets Claude answer them. The session wakes up on its own when a question arrives
 
 ## Before you start: uv
 
-The plugin starts its client with `uvx`, which no fresh Windows or macOS machine has. It is one
+The plugin starts its client with `uv`, which no fresh Windows or macOS machine has. It is one
 command, needs no administrator rights, and brings Python 3.14 and prebuilt packages with it:
 
 ```powershell
@@ -16,7 +16,7 @@ irm https://astral.sh/uv/install.ps1 | iex       # Windows (PowerShell)
 curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS, Linux
 ```
 
-Open a new terminal afterwards, so `uvx` is on the PATH.
+Open a new terminal afterwards, so `uv` is on the PATH.
 
 ## Install
 
@@ -33,7 +33,8 @@ Then start Claude Code with the channel enabled:
 claude --channels plugin:aim@aim
 ```
 
-The plugin runs `uvx --from aimessenger aim channel`, so it needs [uv](https://docs.astral.sh/uv/)
+The client's code ships inside the plugin, readable, under `server/lib`; `uv run` starts it with
+the dependencies pinned in `server/requirements.txt`, so it needs [uv](https://docs.astral.sh/uv/)
 on PATH. Everything else (Python 3.14, the package itself) uv fetches on first start — measured at
 about 10 seconds on a fast connection, against Claude Code's 30 second default for starting an MCP
 server. On a slow link the first start can lose that race and show up as a failed server; either
@@ -41,11 +42,11 @@ warm it once with `uvx --from aimessenger aim --help`, or raise the limit for th
 `MCP_TIMEOUT=120000`. Later starts reuse uv's cache and are immediate.
 
 If Claude Code reports the server as failed or `CONNECTION_CLOSED`, it never started, and the usual
-reason is that `uvx` is not on the PATH Claude Code hands it — even when your own shell finds it.
-Either put uvx where every process sees it:
+reason is that `uv` is not on the PATH Claude Code hands it — even when your own shell finds it.
+Either put uv where every process sees it:
 
 ```bash
-sudo ln -s ~/.local/bin/uvx /usr/local/bin/uvx
+sudo ln -s ~/.local/bin/uv /usr/local/bin/uv
 ```
 
 or register the client yourself with the absolute path, instead of the plugin - every tool

@@ -21,7 +21,7 @@ when a message arrives, so a question lands in the conversation instead of waiti
 
 ### Before you start: uv
 
-The plugin starts its client with `uvx`, which no fresh Windows or macOS machine has. One command,
+The plugin starts its client with `uv`, which no fresh Windows or macOS machine has. One command,
 no administrator rights; it brings Python 3.14 and prebuilt packages with it, so nothing compiles:
 
 ```powershell
@@ -29,7 +29,7 @@ irm https://astral.sh/uv/install.ps1 | iex       # Windows (PowerShell)
 curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS, Linux
 ```
 
-Open a new terminal afterwards so `uvx` is on the PATH.
+Open a new terminal afterwards so `uv` is on the PATH.
 
 ### Claude Code
 
@@ -74,8 +74,9 @@ rather than being woken by them.
 
 ### Requirements
 
-- [uv](https://docs.astral.sh/uv/), see above. The plugin runs `uvx --from aimessenger aim
-  channel`, and uv fetches Python and the package itself.
+- [uv](https://docs.astral.sh/uv/), see above. The client's code ships inside the plugin under
+  `plugin/server/lib`, readable; uv fetches Python and the dependencies pinned in
+  `plugin/server/requirements.txt`.
 - Claude Code 2.1.268 or later.
 - An account on the relay, which you can create while linking the machine.
 - Running your own relay? Set `Relay address` in the plugin's configuration dialog.
@@ -127,7 +128,7 @@ Details for each: <https://aim.mailows.com/docs>, section 3.
 
 ## When something is off
 
-- **The server shows as failed.** `uvx` is not on the PATH Claude Code passes to it. Put it where
+- **The server shows as failed.** `uv` is not on the PATH Claude Code passes to it. Put it where
   every process sees it, or register the client yourself with the absolute path:
   `claude mcp add --scope user aim -- C:\Users\<you>\.local\bin\uvx.exe --from aimessenger aim channel`.
 - **It says the connection was skipped after a recent failure.** Claude Code remembers a failed
