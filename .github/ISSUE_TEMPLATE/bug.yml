@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for reporting it. This page is public, so please leave out message text, keys and
-        tokens. A security problem goes privately to aim@namailu.cz instead - see SECURITY.md.
+        tokens. A security problem goes privately to aim@mailows.com instead - see SECURITY.md.
 
   - type: dropdown
     id: tool

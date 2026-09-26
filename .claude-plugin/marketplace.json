@@ -3,7 +3,7 @@
   "description": "The AIM channel plugin, published by the operator of the aim.mailows.com relay.",
   "owner": {
     "name": "DW Technology LLC",
-    "email": "aim@namailu.cz",
+    "email": "aim@mailows.com",
     "url": "https://aim.mailows.com"
   },
   "plugins": [

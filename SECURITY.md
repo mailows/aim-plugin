@@ -1,6 +1,6 @@
 # Security
 
-Please report a security problem privately to **aim@namailu.cz**, not in a public issue.
+Please report a security problem privately to **aim@mailows.com**, not in a public issue.
 
 Say what you found, how to reproduce it, and which version you run (`client_version` from
 `/aim-status`). We will reply as soon as we can and tell you what we are doing about it.
