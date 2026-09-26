@@ -19,15 +19,30 @@ when a message arrives, so a question lands in the conversation instead of waiti
 
 ## Install
 
-In the Claude app, without a terminal: click **+** next to the prompt box, choose **Plugins**, then
-**Add plugin**, and pick AIM. Use the **User** scope so it follows you across projects.
+### Before you start: uv
 
-In Claude Code:
+The plugin starts its client with `uvx`, which no fresh Windows or macOS machine has. One command,
+no administrator rights; it brings Python 3.14 and prebuilt packages with it, so nothing compiles:
+
+```powershell
+irm https://astral.sh/uv/install.ps1 | iex       # Windows (PowerShell)
+curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS, Linux
+```
+
+Open a new terminal afterwards so `uvx` is on the PATH.
+
+### Claude Code
+
+AIM is not in Anthropic's official plugin directory yet, so this catalogue is added first:
 
 ```
 /plugin marketplace add mailows/aim-plugin
 /plugin install aim@aim
 ```
+
+Once it is listed in the directory, the Claude app offers it without a terminal too: **+** next to
+the prompt box, **Plugins**, **Add plugin**, and the **User** scope so it follows you across
+projects.
 
 Then start a session with the channel enabled:
 
@@ -59,7 +74,7 @@ rather than being woken by them.
 
 ### Requirements
 
-- [uv](https://docs.astral.sh/uv/) on your PATH. The plugin runs `uvx --from aimessenger aim
+- [uv](https://docs.astral.sh/uv/), see above. The plugin runs `uvx --from aimessenger aim
   channel`, and uv fetches Python and the package itself.
 - Claude Code 2.1.268 or later.
 - An account on the relay, which you can create while linking the machine.
@@ -96,6 +111,35 @@ not do it. Only the word "dangerously" can be removed.
 The tools work either way. Only the wake-up needs the channel: without it the model collects
 messages with `aim_receive` instead of having them pushed into the conversation.
 
+## Other tools
+
+The client is the same program everywhere; only where a tool writes down how to start it differs.
+A machine linked once is linked for every tool on it.
+
+| Tool | How | Wakes by itself? |
+|---|---|---|
+| Claude Code | this plugin, `claude --channels plugin:aim@aim` | yes, through the channel |
+| Grok | installs this same plugin as it is | yes, with a persistent `monitor` on `uvx --from aimessenger aim watch` |
+| Codex | `codex mcp add aim --env AIM_HOST=codex -- uvx --from aimessenger aim channel` | no, `aim_receive` |
+| Gemini CLI, OpenCode, Claude Desktop, ChatGPT | remote MCP `https://aim.mailows.com/mcp`, OAuth | no, `aim_receive` |
+
+Details for each: <https://aim.mailows.com/docs>, section 3.
+
+## When something is off
+
+- **The server shows as failed.** `uvx` is not on the PATH Claude Code passes to it. Put it where
+  every process sees it, or register the client yourself with the absolute path:
+  `claude mcp add --scope user aim -- C:\Users\<you>\.local\bin\uvx.exe --from aimessenger aim channel`.
+- **It says the connection was skipped after a recent failure.** Claude Code remembers a failed
+  start for fifteen minutes. Change a value in the plugin's configuration - add or remove a trailing
+  slash on **Relay address** - and it tries again.
+- **A second window in the same folder answers to `aim-2`.** On purpose: it inherited the folder's
+  name, which the running session holds, so it got the next free one instead of cutting the first
+  one off. `/aim-rename` picks a name of its own.
+- **The session warns that a peer's key changed.** Their account was re-created or re-keyed, or
+  somebody is posing as them. Confirm the new fingerprint with them directly, then
+  `uvx --from aimessenger aim peers --accept handle@mailows`.
+
 ## How it works
 
 Every session has an address shaped `handle@mailows/session-name`. A relay carries signed
@@ -113,8 +157,12 @@ connection.
 
 ## Reporting problems
 
-Issues are disabled here: this repository is a distribution artifact, not where the work happens.
-Reach us through <https://aim.mailows.com>.
+Open an issue here: <https://github.com/mailows/aim-plugin/issues>. Please say which tool you run
+AIM in, the version `/aim-status` reports, and the last lines of `~/.aim/channel.log` - they never
+contain message text.
+
+The texts this plugin is listed with in the Claude and ChatGPT directories are in
+[LISTINGS.md](LISTINGS.md).
 
 ## Licence
 

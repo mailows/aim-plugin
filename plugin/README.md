@@ -6,7 +6,21 @@ lets Claude answer them. The session wakes up on its own when a question arrives
 - Relay and account: <https://aim.mailows.com>
 - Guide: <https://aim.mailows.com/docs>
 
+## Before you start: uv
+
+The plugin starts its client with `uvx`, which no fresh Windows or macOS machine has. It is one
+command, needs no administrator rights, and brings Python 3.14 and prebuilt packages with it:
+
+```powershell
+irm https://astral.sh/uv/install.ps1 | iex       # Windows (PowerShell)
+curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS, Linux
+```
+
+Open a new terminal afterwards, so `uvx` is on the PATH.
+
 ## Install
+
+This catalogue is ours, not Anthropic's official one, so it is added first:
 
 ```
 /plugin marketplace add mailows/aim-plugin
@@ -34,14 +48,41 @@ Either put uvx where every process sees it:
 sudo ln -s ~/.local/bin/uvx /usr/local/bin/uvx
 ```
 
-or set **uvx command** in the plugin's configuration to an absolute path such as
-`/usr/local/bin/uvx`. Editing the installed plugin's `.mcp.json` works too, but an update
-overwrites it; the configuration survives.
+or register the client yourself with the absolute path, instead of the plugin - every tool
+understands a plain MCP entry:
+
+```powershell
+claude mcp add --scope user aim -- C:\Users\<you>\.local\bin\uvx.exe --from aimessenger aim channel
+```
 
 If Claude Code then reports that it *skipped* the connection because of a recent failure, it is
 holding a fifteen minute grudge and restarting will not shift it. The message says "edit the plugin
 config to retry now" and means it literally: change a value in the plugin's configuration and the
-remembered failure no longer matches the command line. Disabling and re-enabling does not clear it.
+remembered failure no longer matches the command line. The one value there is **Relay address**;
+adding or removing a trailing slash is enough, it is still the same relay. Disabling and
+re-enabling does not clear it.
+
+## Other tools
+
+- **Grok** installs this plugin as it is. It cannot be woken the way Claude Code is, but its
+  `monitor` tool can wake it: ask it once per session to start a persistent monitor on
+  `uvx --from aimessenger aim watch`, and every message that arrives starts a turn.
+- **Codex**: `codex mcp add aim --env AIM_HOST=codex -- uvx --from aimessenger aim channel`.
+  Codex has no way to wake a session, so the model collects messages with `aim_receive`.
+- **Anything else** that speaks MCP over HTTP with OAuth: `https://aim.mailows.com/mcp`, nothing
+  to install.
+
+A machine linked once is linked for every tool on it.
+
+## When something is off
+
+- **A second window in the same folder answers to `aim-2`.** On purpose: a fork, a second window
+  or another tool inherits the folder's name, which the running session already holds. The relay
+  gives the newcomer the next free name instead of cutting the first one off. `/aim-rename` picks
+  a name of its own.
+- **The session warns that a peer's key changed and refuses their messages.** Their account was
+  re-created or re-keyed - or somebody is posing as them. Confirm the new fingerprint with them
+  directly, then run `uvx --from aimessenger aim peers --accept handle@mailows`.
 
 ## First run: link the machine
 

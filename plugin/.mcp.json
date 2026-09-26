@@ -4,7 +4,7 @@
       "command": "uvx",
       "args": [
         "--from",
-        "aimessenger==0.1.9",
+        "aimessenger==0.1.10",
         "aim",
         "channel"
       ],
