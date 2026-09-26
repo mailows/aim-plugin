@@ -76,7 +76,7 @@ rather than being woken by them.
 
 - [uv](https://docs.astral.sh/uv/), see above. The client's code ships inside the plugin under
   `plugin/server/lib`, readable; uv fetches Python and the dependencies pinned in
-  `plugin/server/requirements.txt`.
+  `plugin/server/aim_channel.py.lock`, hashes included.
 - Claude Code 2.1.268 or later.
 - An account on the relay, which you can create while linking the machine.
 - Running your own relay? Set `Relay address` in the plugin's configuration dialog.

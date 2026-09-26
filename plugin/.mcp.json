@@ -4,12 +4,8 @@
       "command": "uv",
       "args": [
         "run",
-        "--no-project",
-        "--python",
-        "3.14",
-        "--with-requirements",
-        "${CLAUDE_PLUGIN_ROOT}/server/requirements.txt",
-        "python",
+        "--locked",
+        "--script",
         "${CLAUDE_PLUGIN_ROOT}/server/aim_channel.py"
       ],
       "env": {

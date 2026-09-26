@@ -34,7 +34,7 @@ claude --channels plugin:aim@aim
 ```
 
 The client's code ships inside the plugin, readable, under `server/lib`; `uv run` starts it with
-the dependencies pinned in `server/requirements.txt`, so it needs [uv](https://docs.astral.sh/uv/)
+the dependencies locked, with hashes, in `server/aim_channel.py.lock`, so it needs [uv](https://docs.astral.sh/uv/)
 on PATH. Everything else (Python 3.14, the package itself) uv fetches on first start — measured at
 about 10 seconds on a fast connection, against Claude Code's 30 second default for starting an MCP
 server. On a slow link the first start can lose that race and show up as a failed server; either
