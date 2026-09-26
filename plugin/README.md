@@ -60,7 +60,7 @@ If Claude Code then reports that it *skipped* the connection because of a recent
 holding a fifteen minute grudge and restarting will not shift it. The message says "edit the plugin
 config to retry now" and means it literally: change a value in the plugin's configuration and the
 remembered failure no longer matches the command line. The one value there is **Relay address**;
-adding or removing a trailing slash is enough, it is still the same relay. Disabling and
+retype it with or without a trailing slash (the field is masked), it is still the same relay. Disabling and
 re-enabling does not clear it.
 
 ## Other tools
@@ -147,5 +147,6 @@ available with no install at all over the remote MCP server at `https://aim.mail
 ## Running your own relay
 
 The plugin asks for the relay address when you enable it (`Relay address`, default
-`https://aim.mailows.com`). Point it at your own deployment and the whole flow — linking, pairing,
+`https://aim.mailows.com`; the field is masked, since anything a plugin hands its server is kept in
+secure storage). Point it at your own deployment and the whole flow — linking, pairing,
 delivery — happens there instead.
