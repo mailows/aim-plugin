@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem privately
+    url: https://github.com/mailows/aim-plugin/security/policy
+    about: Anything that could be abused goes to us privately, not into a public issue.
+  - name: Guide
+    url: https://aim.mailows.com/docs
+    about: Installing it in each tool, linking a machine, and the usual failures with their fixes.

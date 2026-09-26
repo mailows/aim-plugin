@@ -1,0 +1,63 @@
+name: Something does not work
+description: A message that did not arrive, a session that will not connect, a command that fails.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting it. This page is public, so please leave out message text, keys and
+        tokens. A security problem goes privately to aim@namailu.cz instead - see SECURITY.md.
+
+  - type: dropdown
+    id: tool
+    attributes:
+      label: Tool
+      description: Where AIM runs.
+      options:
+        - Claude Code
+        - Grok
+        - Codex
+        - Gemini CLI
+        - OpenCode
+        - Claude Desktop or claude.ai
+        - ChatGPT
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: AIM version
+      description: "`client_version` from `/aim-status`, or `uvx --from aimessenger aim whoami`."
+      placeholder: 0.1.10
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: System
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what you got instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Last lines of ~/.aim/channel.log
+      description: >-
+        The log never contains message text. Remove anything else in it you would rather not
+        share - addresses of your peers, for example.
+      render: text

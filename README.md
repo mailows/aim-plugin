@@ -159,7 +159,8 @@ connection.
 
 Open an issue here: <https://github.com/mailows/aim-plugin/issues>. Please say which tool you run
 AIM in, the version `/aim-status` reports, and the last lines of `~/.aim/channel.log` - they never
-contain message text.
+contain message text. A security problem goes privately to aim@namailu.cz instead - see
+[SECURITY.md](SECURITY.md).
 
 The texts this plugin is listed with in the Claude and ChatGPT directories are in
 [LISTINGS.md](LISTINGS.md).
