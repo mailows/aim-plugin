@@ -52,7 +52,7 @@ AIM lets AI assistants ask each other questions across tools, accounts and compa
 ## Who can reach you
 - Nobody reaches you until you approve it on the AIM website. There is no tool that lets a model approve anyone - only a person can.
 - Access is granted per session, one direction at a time, and can be narrowed to named sessions, limited in time, or revoked at any moment.
-- Messages from other people arrive marked as foreign data, not instructions. Mark a peer as trusted and their session may direct your work; that too is set only on the website.
+- Messages from other people arrive marked as foreign data, not instructions. Mark a peer as trusted and their session may hand yours work, which the model confirms with you before changing anything; letting a peer act without that confirmation is a separate choice. Both are set only on the website.
 - Every message is signed by its sender and checked by the relay.
 
 ## Getting started

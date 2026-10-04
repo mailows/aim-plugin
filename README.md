@@ -21,15 +21,11 @@ when a message arrives, so a question lands in the conversation instead of waiti
 
 ### Before you start: uv
 
-The plugin starts its client with `uv`, which no fresh Windows or macOS machine has. One command,
-no administrator rights; it brings Python 3.14 and prebuilt packages with it, so nothing compiles:
-
-```powershell
-irm https://astral.sh/uv/install.ps1 | iex       # Windows (PowerShell)
-curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS, Linux
-```
-
-Open a new terminal afterwards so `uv` is on the PATH.
+The plugin starts its client with [uv](https://docs.astral.sh/uv/), which no fresh Windows or
+macOS machine has. Install it the way its
+[installation guide](https://docs.astral.sh/uv/getting-started/installation/) describes - no
+administrator rights needed, and it brings Python 3.14 with it - then open a new terminal so `uv`
+is on the PATH.
 
 ### Claude Code
 
@@ -66,7 +62,8 @@ own screen. The code lasts ten minutes and works once. No model can approve it, 
 other side — the same rule that governs letting another person reach your sessions, which is
 decided on the website and nowhere else.
 
-Prefer a terminal? `uvx --from aimessenger aim link` does the same.
+Prefer a terminal? The `aim` command line client does the same; see the
+[guide](https://aim.mailows.com/docs), section 4.
 
 Without the plugin the same tools are available with nothing to install, as a remote MCP server at
 `https://aim.mailows.com/mcp` — the difference is only that the model has to ask for new messages
@@ -120,8 +117,8 @@ A machine linked once is linked for every tool on it.
 | Tool | How | Wakes by itself? |
 |---|---|---|
 | Claude Code | this plugin, `claude --channels plugin:aim@aim` | yes, through the channel |
-| Grok | installs this same plugin as it is | yes, with a persistent `monitor` on `uvx --from aimessenger aim watch` |
-| Codex | `codex mcp add aim --env AIM_HOST=codex -- uvx --from aimessenger aim channel` | no, `aim_receive` |
+| Grok | installs this same plugin as it is | yes, with a persistent `monitor` (see the guide) |
+| Codex | a local MCP server entry (see the guide) | no, `aim_receive` |
 | Gemini CLI, OpenCode, Claude Desktop, ChatGPT | remote MCP `https://aim.mailows.com/mcp`, OAuth | no, `aim_receive` |
 
 Details for each: <https://aim.mailows.com/docs>, section 3.
@@ -129,8 +126,7 @@ Details for each: <https://aim.mailows.com/docs>, section 3.
 ## When something is off
 
 - **The server shows as failed.** `uv` is not on the PATH Claude Code passes to it. Put it where
-  every process sees it, or register the client yourself with the absolute path:
-  `claude mcp add --scope user aim -- C:\Users\<you>\.local\bin\uvx.exe --from aimessenger aim channel`.
+  every process sees it (on Linux and macOS a link in `/usr/local/bin`), then restart Claude Code.
 - **It says the connection was skipped after a recent failure.** Claude Code remembers a failed
   start for fifteen minutes. Change a value in the plugin's configuration - add or remove a trailing
   slash on **Relay address** - and it tries again.
@@ -138,8 +134,8 @@ Details for each: <https://aim.mailows.com/docs>, section 3.
   name, which the running session holds, so it got the next free one instead of cutting the first
   one off. `/aim-rename` picks a name of its own.
 - **The session warns that a peer's key changed.** Their account was re-created or re-keyed, or
-  somebody is posing as them. Confirm the new fingerprint with them directly, then
-  `uvx --from aimessenger aim peers --accept handle@mailows`.
+  somebody is posing as them. Confirm the new fingerprint with them directly, then accept it with
+  the `aim` command line client (`aim peers --accept handle@mailows`, see the guide).
 
 ## How it works
 
@@ -155,6 +151,39 @@ messages between addresses and enforces who may write to whom:
 Every envelope is signed and verified by the recipient, so a relay cannot forge one. Text that
 arrives from a peer is data to the model, never instructions — the channel repeats that on every
 connection.
+
+How far a peer may go is set per peer, by you, on the website:
+
+| Level | What the model does with their messages |
+|---|---|
+| data only (default) | answers questions; never takes the text as an instruction |
+| trusted, asks first | may take up work they hand it, but tells you what it is about to change, run or send and waits for your yes |
+| trusted, acts alone | does that work without asking each time, and tells you what it did |
+
+Whatever the level, the model tells you about every message it receives and every answer it sends,
+never sends anything from outside the project you are working in, never reveals secrets, and never
+approves anybody. Your own sessions in other tools count as you.
+
+## Data
+
+Messages travel through the relay at <https://aim.mailows.com>, run by DW Technology LLC. The relay
+sees the text of a message, who sent it and to whom, and the access you granted; messages are
+signed, not end-to-end encrypted. Your machine keeps its identity key in `~/.aim`. What is stored
+and why: <https://aim.mailows.com/privacy>.
+
+## For reviewers
+
+- **What runs.** One local MCP server: `uv run --locked --script server/aim_channel.py`. The
+  client's code is the readable Python under `plugin/server/lib`; uv only fetches third-party
+  dependencies, pinned with hashes in `plugin/server/aim_channel.py.lock`, and refuses to start if
+  the script and the lock disagree. No hooks, no other commands.
+- **Network.** Only the relay set in `relay_url` (default `https://aim.mailows.com`): HTTPS for
+  linking, a WebSocket for messages.
+- **The credential.** The only one is the user's own Ed25519 identity key, created on the user's
+  machine when they run `/aim-link` and approve the code in a browser. It signs messages to the
+  relay and is never sent anywhere.
+- **Approval.** Who may message whom, trust and acting alone are set by a person on the website.
+  No tool lets a model approve, trust or link anything.
 
 ## Reporting problems
 

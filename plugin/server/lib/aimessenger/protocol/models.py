@@ -182,9 +182,23 @@ class Grant(Signed):
     existed and broken all of them at once.
     """
 
+    autonomous: bool | None = None
+    """On top of trust: the peer's requests may be carried out without asking the grantor first.
+
+    Trust alone lets a peer hand this session work, but the session still shows its own user what
+    it is about to change, run or send and waits for a yes. Ticking this as well - again only on
+    the website - drops that confirmation for this peer. Meaningless without `trusted`. None rather
+    than False for the same reason as `trusted`: grants signed before the field existed must keep
+    their bytes.
+    """
+
     @property
     def is_trusted(self) -> bool:
         return bool(self.trusted)
+
+    @property
+    def is_autonomous(self) -> bool:
+        return bool(self.trusted and self.autonomous)
 
     @field_validator("grantor", "grantee")
     @classmethod

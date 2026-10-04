@@ -8,15 +8,11 @@ lets Claude answer them. The session wakes up on its own when a question arrives
 
 ## Before you start: uv
 
-The plugin starts its client with `uv`, which no fresh Windows or macOS machine has. It is one
-command, needs no administrator rights, and brings Python 3.14 and prebuilt packages with it:
-
-```powershell
-irm https://astral.sh/uv/install.ps1 | iex       # Windows (PowerShell)
-curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS, Linux
-```
-
-Open a new terminal afterwards, so `uv` is on the PATH.
+The plugin starts its client with [uv](https://docs.astral.sh/uv/), which no fresh Windows or
+macOS machine has. Install it as its
+[installation guide](https://docs.astral.sh/uv/getting-started/installation/) describes - no
+administrator rights needed, and it brings Python 3.14 with it - then open a new terminal, so `uv`
+is on the PATH.
 
 ## Install
 
@@ -37,23 +33,16 @@ The client's code ships inside the plugin, readable, under `server/lib`; `uv run
 the dependencies locked, with hashes, in `server/aim_channel.py.lock`, so it needs [uv](https://docs.astral.sh/uv/)
 on PATH. Everything else (Python 3.14, the package itself) uv fetches on first start — measured at
 about 10 seconds on a fast connection, against Claude Code's 30 second default for starting an MCP
-server. On a slow link the first start can lose that race and show up as a failed server; either
-warm it once with `uvx --from aimessenger aim --help`, or raise the limit for that first run with
-`MCP_TIMEOUT=120000`. Later starts reuse uv's cache and are immediate.
+server. On a slow link the first start can lose that race and show up as a failed server; raise
+the limit for that first run with `MCP_TIMEOUT=120000`. Later starts reuse uv's cache and are
+immediate.
 
 If Claude Code reports the server as failed or `CONNECTION_CLOSED`, it never started, and the usual
 reason is that `uv` is not on the PATH Claude Code hands it — even when your own shell finds it.
-Either put uv where every process sees it:
+Put uv where every process sees it, then restart Claude Code:
 
 ```bash
 sudo ln -s ~/.local/bin/uv /usr/local/bin/uv
-```
-
-or register the client yourself with the absolute path, instead of the plugin - every tool
-understands a plain MCP entry:
-
-```powershell
-claude mcp add --scope user aim -- C:\Users\<you>\.local\bin\uvx.exe --from aimessenger aim channel
 ```
 
 If Claude Code then reports that it *skipped* the connection because of a recent failure, it is
@@ -66,10 +55,9 @@ re-enabling does not clear it.
 ## Other tools
 
 - **Grok** installs this plugin as it is. It cannot be woken the way Claude Code is, but its
-  `monitor` tool can wake it: ask it once per session to start a persistent monitor on
-  `uvx --from aimessenger aim watch`, and every message that arrives starts a turn.
-- **Codex**: `codex mcp add aim --env AIM_HOST=codex -- uvx --from aimessenger aim channel`.
-  Codex has no way to wake a session, so the model collects messages with `aim_receive`.
+  `monitor` tool can wake it; the guide says how.
+- **Codex** takes the same client as a local MCP server (see the guide). It has no way to wake a
+  session, so the model collects messages with `aim_receive`.
 - **Anything else** that speaks MCP over HTTP with OAuth: `https://aim.mailows.com/mcp`, nothing
   to install.
 
@@ -83,7 +71,8 @@ A machine linked once is linked for every tool on it.
   a name of its own.
 - **The session warns that a peer's key changed and refuses their messages.** Their account was
   re-created or re-keyed - or somebody is posing as them. Confirm the new fingerprint with them
-  directly, then run `uvx --from aimessenger aim peers --accept handle@mailows`.
+  directly, then accept it with the `aim` command line client (`aim peers --accept
+  handle@mailows`; the guide, section 4, shows how to install it).
 
 ## First run: link the machine
 
@@ -150,3 +139,5 @@ The plugin asks for the relay address when you enable it (`Relay address`, defau
 `https://aim.mailows.com`; the field is masked, since anything a plugin hands its server is kept in
 secure storage). Point it at your own deployment and the whole flow — linking, pairing,
 delivery — happens there instead.
+
+Details for every tool: <https://aim.mailows.com/docs>, section 3.

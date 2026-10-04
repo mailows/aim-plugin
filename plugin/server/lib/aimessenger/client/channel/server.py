@@ -41,7 +41,7 @@ from ..resolve import (
 )
 from ..store import Store
 from .bootstrap import Bootstrap
-from .instructions import INSTRUCTIONS
+from .instructions import build_instructions
 from .tools import TOOLS
 
 CHANNEL_METHOD = "notifications/claude/channel"
@@ -375,6 +375,22 @@ class ChannelServer:
         me = parse_endpoint(self.me)
         return any(g.is_trusted and grant_covers(g, sender, me) for g in self._my_grants())
 
+    def _trust_level(self, sender: EndpointAddress) -> str:
+        """foreign, trusted, or autonomous: how far my user lets this peer steer the session.
+
+        My own other sessions are autonomous - they are my user. Anyone else is autonomous only
+        when my user ticked that on the website as well as trust, in a grant signed with my key.
+        """
+        if same_account(sender, parse_endpoint(self.me)):
+            return "autonomous"
+        me = parse_endpoint(self.me)
+        covering = [g for g in self._my_grants() if grant_covers(g, sender, me)]
+        if any(g.is_autonomous for g in covering):
+            return "autonomous"
+        if any(g.is_trusted for g in covering):
+            return "trusted"
+        return "foreign"
+
     def _authorized(self, env: Envelope) -> tuple[bool, str, Grant | None]:
         sender, recipient = env.sender, env.recipient
         if same_account(sender, recipient):
@@ -446,8 +462,7 @@ class ChannelServer:
                 return  # only the "reached the model" receipt is worth an event
 
         self.arrived.set()  # a blocked aim_receive finds it in the store
-        trusted = reason == "same_account" or self._trusts(env.sender)
-        content, meta = self._render(env, trusted=trusted)
+        content, meta = self._render(env, level=self._trust_level(env.sender))
         pushed = await self.inject(content, meta, remember=False)
         # "injected" tells the sender a model has the message. Only a push into Claude Code
         # earns it here; anywhere else it is earned when aim_receive hands the message over.
@@ -480,7 +495,8 @@ class ChannelServer:
         except RelayWSError as exc:
             log.debug("receipt failed: %s", exc)
 
-    def _render(self, env: Envelope, trusted: bool = False) -> tuple[str, dict[str, str]]:
+    def _render(self, env: Envelope, level: str = "foreign") -> tuple[str, dict[str, str]]:
+        trusted = level in ("trusted", "autonomous")
         meta = {
             "kind": env.kind,
             "from": env.from_,
@@ -489,6 +505,8 @@ class ChannelServer:
             "authority": env.authority,
             "trust": "trusted" if trusted else "foreign",
         }
+        if level == "autonomous":
+            meta["autonomy"] = "act"
         if env.reply_to:
             meta["reply_to"] = env.reply_to
         if env.deadline:
@@ -505,7 +523,10 @@ class ChannelServer:
             alias = self.store.alias_of(env.from_)
             if alias:
                 meta["from_alias"] = alias
-        who = "a session your user marked as trusted" if trusted else "an outside party"
+        who = {
+            "autonomous": "a session your user lets act without asking",
+            "trusted": "a session your user marked as trusted; confirm before changing anything",
+        }.get(level, "an outside party")
         lines = [
             f"From {env.from_} ({env.kind}, authority={env.authority}, msg_id={env.id}) - {who}."
         ]
@@ -684,8 +705,7 @@ class ChannelServer:
         self.store.mark_collected([env.id for env, _ in waiting])
         messages = []
         for env, state in waiting:
-            trusted = same_account(env.sender, env.recipient) or self._trusts(env.sender)
-            content, meta = self._render(env, trusted=trusted)
+            content, meta = self._render(env, level=self._trust_level(env.sender))
             messages.append({"at": env.ts, "content": content, **meta})
             if self.pushes or state != "received":
                 continue  # Claude Code: the push already said so, or this was answered
@@ -851,7 +871,7 @@ async def amain() -> None:
     server: Server[Any] = Server(
         "aim",
         version=CLIENT_VERSION,
-        instructions=INSTRUCTIONS,
+        instructions=build_instructions(pushes=bool(os.environ.get("CLAUDE_CODE_SESSION_ID"))),
         lifespan=lifespan,
         on_list_tools=on_list_tools,
         on_call_tool=on_call_tool,
