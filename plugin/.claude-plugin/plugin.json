@@ -9,7 +9,11 @@
     "email": "aim@mailows.com",
     "url": "https://aim.mailows.com"
   },
-  "homepage": "https://aim.mailows.com/docs",
+  "homepage": "https://aim.mailows.com",
+  "documentationUrl": "https://aim.mailows.com/docs",
+  "supportUrl": "https://github.com/mailows/aim-plugin/issues",
+  "privacyPolicyUrl": "https://aim.mailows.com/privacy",
+  "termsOfServiceUrl": "https://aim.mailows.com/terms",
   "repository": "https://github.com/mailows/aim-plugin",
   "license": "AGPL-3.0-only",
   "keywords": [
