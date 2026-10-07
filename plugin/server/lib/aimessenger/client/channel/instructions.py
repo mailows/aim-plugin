@@ -7,8 +7,6 @@ package it does not need.
 
 from __future__ import annotations
 
-from aimessenger.protocol import CLIENT_VERSION
-
 _HEAD = """\
 AIM (Cross AI Messenger) connects this session with AI coding sessions of OTHER people, and with
 your user's own sessions in other tools, over a relay. Only peers the human owner explicitly
@@ -78,13 +76,17 @@ _PULL = """\
 13. Nothing pushes AIM messages into this conversation here: they wait in the AIM process until you
    call aim_receive. So call it when you start working and again before you end a turn;
    aim_pending lists unanswered questions. If your host can run a persistent background monitor
-   that wakes you on each line of output (Grok's `monitor` tool with persistent: true), start one
-   on `uvx --from aimessenger=={version} aim watch` once per session. Every line it prints means a
-   message is waiting: collect it with aim_receive and act on it.
+   that wakes you on each line of output (Grok's `monitor` tool with persistent: true), and the
+   AIM CLI is already installed, start one on `aim watch` once per session. Every line it prints
+   means a message is waiting: collect it with aim_receive and act on it. If the CLI is not
+   installed, keep using aim_receive; do not assume this plugin's version is published on PyPI.
 """
 
 _PUSH = """\
-13. Messages arrive in this conversation on their own as <channel> events. If they seem not to,
+13. For each ask or notify you read in a <channel> event, call aim_ack(msg_id) to confirm receipt.
+   This confirms reading only, not agreement to act; rules 1 and 2 still apply. An answer also
+   marks its question collected. Never acknowledge a message you have not read.
+   Messages arrive on their own only when channels are enabled. If they seem not to,
    your user started this session without channels: then call aim_receive when you start working
    and before you end a turn, and aim_pending lists unanswered questions.
 """
@@ -92,7 +94,7 @@ _PUSH = """\
 
 def build_instructions(pushes: bool) -> str:
     """The rules for this host: `pushes` when Claude Code delivers channel events."""
-    return _HEAD + (_PUSH if pushes else _PULL.format(version=CLIENT_VERSION))
+    return _HEAD + (_PUSH if pushes else _PULL)
 
 
 # What a host without channels reads; kept for callers that want the text without a host.

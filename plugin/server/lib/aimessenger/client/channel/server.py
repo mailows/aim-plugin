@@ -111,8 +111,8 @@ class ChannelServer:
         self.unread: list[dict[str, Any]] = []
         self.arrived = asyncio.Event()
         self.tasks: list[asyncio.Task[Any]] = []
-        # Only Claude Code turns our notification into something its model reads. Every other
-        # host drops it on the floor, and saying "injected" there was a false receipt.
+        # A host hint for instructions only. It does not prove channels are enabled or that
+        # a model received a notification; only a tool call can confirm that.
         self.pushes = bool(os.environ.get("CLAUDE_CODE_SESSION_ID"))
         self._key_change_reported: set[str] = set()  # warn once per peer, not per message
 
@@ -128,7 +128,7 @@ class ChannelServer:
     async def _flush_pending(self) -> None:
         events, self.pending_events = self.pending_events, []
         for content, meta in events:
-            await self.inject(content, meta)
+            await self.inject(content, meta, remember=False)
 
     def attach(self, session: Any) -> None:
         """Adopt the MCP session the setup phase already captured."""
@@ -402,7 +402,7 @@ class ChannelServer:
                     return True, "grant", g
             return False, "no_local_grant", None
         if env.kind in REPLY_KINDS:
-            orig = self.store.get_message(env.reply_to or "")
+            orig = self.store.get_message(env.reply_to or "", "out")
             if orig is not None and orig.from_ == env.to and orig.to == env.from_:
                 return True, "reply_in_thread", None
             for g in grants:
@@ -420,7 +420,7 @@ class ChannelServer:
         if env.to != self.me:
             log.warning("envelope for %s delivered to %s - dropped", env.to, self.me)
             return
-        if self.store.has_message(env.id):
+        if self.store.has_message(env.id, "in"):
             await self._safe_ack(env.id)
             return
         pub = await self._peer_pubkey(str(env.sender.user), env.sender.handle)
@@ -448,10 +448,13 @@ class ChannelServer:
             return
 
         self.store.save_message(env, "in", "received")
+        # the question is answered the moment its answer is stored: mark it before awaiting the
+        # relay, or aim_wait - which watches the store - can return while it still looks open
+        if env.kind in ("answer", "error") and env.reply_to:
+            self.store.set_state(env.reply_to, "answered", "out")
         await self._safe_ack(env.id)
 
         if env.kind in ("answer", "error") and env.reply_to:
-            self.store.set_state(env.reply_to, "answered")
             ev = self.answer_events.get(env.reply_to)
             if ev:
                 ev.set()
@@ -463,13 +466,9 @@ class ChannelServer:
 
         self.arrived.set()  # a blocked aim_receive finds it in the store
         content, meta = self._render(env, level=self._trust_level(env.sender))
-        pushed = await self.inject(content, meta, remember=False)
-        # "injected" tells the sender a model has the message. Only a push into Claude Code
-        # earns it here; anywhere else it is earned when aim_receive hands the message over.
-        if pushed and self.pushes:
-            self.store.set_state(env.id, "injected")
-            if env.kind == "ask" and self.cfg.ack_injected:
-                await self._send_receipt(env)
+        # The host may silently discard this notification. Receipt and collection happen only
+        # when the model calls aim_ack, aim_receive or aim_answer.
+        await self.inject(content, meta, remember=False)
 
     async def _safe_ack(self, message_id: str) -> None:
         try:
@@ -534,8 +533,12 @@ class ChannelServer:
             lines.append(
                 f'Answer with aim_answer(msg_id="{env.id}", ...) before {env.deadline or "no deadline"}.'
             )
+        if env.kind in ("ask", "notify"):
+            lines.append(f'Confirm receipt with aim_ack(msg_id="{env.id}") when you read this.')
         if env.kind == "ack":
-            lines.append(f"Receipt: your message {env.reply_to} reached the peer's Claude.")
+            lines.append(
+                f"Receipt: your message {env.reply_to} was collected by the peer's session."
+            )
         lines.append(
             "--- message (trusted: your user vouched for this peer) ---"
             if trusted
@@ -570,8 +573,19 @@ class ChannelServer:
         env.sign_with(self.key)
         if not self.ws.connected.is_set():
             raise RelayWSError("offline", "not connected to the relay right now - retry shortly")
-        result = await self.ws.send_envelope(env)
-        self.store.save_message(env, "out", result.get("state", "sent"))
+        # Replies can arrive while send_envelope is awaiting the relay's response.
+        self.store.save_message(env, "out", "sending")
+        try:
+            result = await self.ws.send_envelope(env)
+        except RelayWSError as exc:
+            state = "uncertain" if exc.code in ("timeout", "disconnected") else "failed"
+            self.store.finish_send(env.id, state)
+            raise
+        except BaseException:
+            # Cancellation or a broken transport does not prove the relay rejected the send.
+            self.store.finish_send(env.id, "uncertain")
+            raise
+        self.store.finish_send(env.id, result.get("state", "sent"))
         return {"id": env.id, "thread": env.thread, "state": result.get("state"), "to": env.to}
 
     async def tool_ask(self, a: dict[str, Any]) -> dict[str, Any]:
@@ -594,7 +608,7 @@ class ChannelServer:
         return out
 
     async def tool_answer(self, a: dict[str, Any]) -> dict[str, Any]:
-        ask = self.store.get_message(a["msg_id"])
+        ask = self.store.get_message(a["msg_id"], "in")
         if ask is None or ask.kind != "ask" or ask.to != self.me:
             raise ValueError("msg_id is not an incoming ask for this session")
         env = self._build(
@@ -602,8 +616,28 @@ class ChannelServer:
         )
         env.body.status = a.get("status", "ok")
         out = await self._send(env)
-        self.store.set_state(ask.id, "answered")
+        self.store.set_state(ask.id, "answered", "in")
+        self.store.mark_collected([ask.id])
         return out
+
+    async def tool_ack(self, a: dict[str, Any]) -> dict[str, Any]:
+        """The model explicitly confirms reading a push; never infer this from the transport."""
+        env = self.store.get_message(a["msg_id"], "in")
+        if env is None or env.to != self.me:
+            raise ValueError("msg_id is not an incoming message for this session")
+        if self.store.message_state(env.id, "in") == "expired":
+            raise ValueError("msg_id has expired")
+        await self._collect(env)
+        return {"msg_id": env.id, "collected": True}
+
+    async def _collect(self, env: Envelope) -> None:
+        state = self.store.message_state(env.id, "in")
+        self.store.mark_collected([env.id])
+        if state != "received":
+            return  # repeated acknowledgments must not send another receipt or undo an answer
+        self.store.set_state(env.id, "injected", "in")
+        if env.kind == "ask" and self.cfg.ack_injected:
+            await self._send_receipt(env)
 
     async def tool_notify(self, a: dict[str, Any]) -> dict[str, Any]:
         env = self._build(
@@ -702,16 +736,11 @@ class ChannelServer:
                 await asyncio.wait_for(self.arrived.wait(), timeout)
         notices, self.unread = self.unread, []
         waiting = self.store.uncollected(self.me)
-        self.store.mark_collected([env.id for env, _ in waiting])
         messages = []
-        for env, state in waiting:
+        for env, _state in waiting:
             content, meta = self._render(env, level=self._trust_level(env.sender))
             messages.append({"at": env.ts, "content": content, **meta})
-            if self.pushes or state != "received":
-                continue  # Claude Code: the push already said so, or this was answered
-            self.store.set_state(env.id, "injected")
-            if env.kind == "ask" and self.cfg.ack_injected:
-                await self._send_receipt(env)  # now it is true: the model has it
+            await self._collect(env)
         events = sorted(notices + messages, key=lambda e: e.get("at") or "")
         return {"events": events, "count": len(events), "me": self.me}
 
@@ -747,7 +776,7 @@ class ChannelServer:
                 for m in self.store.pending_outgoing_asks(self.me):
                     dl = m.get("deadline")
                     if dl and parse_iso(dl) < parse_iso(now_iso()):
-                        self.store.set_state(m["id"], "timeout")
+                        self.store.set_state(m["id"], "timeout", "out")
                         await self.inject(
                             f"Your ask {m['id']} to {m['to']} got no answer before its deadline {dl}.",
                             {
@@ -760,7 +789,7 @@ class ChannelServer:
                 for m in self.store.pending_incoming_asks(self.me):
                     dl = m.get("deadline")
                     if dl and parse_iso(dl) < parse_iso(now_iso()):
-                        self.store.set_state(m["id"], "expired")
+                        self.store.set_state(m["id"], "expired", "in")
             except Exception:
                 log.exception("deadline watch failed")
 
@@ -841,6 +870,8 @@ async def amain() -> None:
                     return _result(await channel.tool_ask(a))
                 case "aim_answer":
                     return _result(await channel.tool_answer(a))
+                case "aim_ack":
+                    return _result(await channel.tool_ack(a))
                 case "aim_notify":
                     return _result(await channel.tool_notify(a))
                 case "aim_wait":

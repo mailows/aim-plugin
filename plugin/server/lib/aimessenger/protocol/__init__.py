@@ -1,7 +1,7 @@
 """AIM protocol v1: addressing, canonical JSON, Ed25519 signatures, envelopes, grants, framing."""
 
 PROTOCOL_VERSION = 1
-CLIENT_VERSION = "0.1.10"
+CLIENT_VERSION = "0.1.17"
 MIN_CLIENT_VERSION = "0.1.0"
 
 # Size limits (bytes)

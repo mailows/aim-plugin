@@ -63,6 +63,14 @@ re-enabling does not clear it.
 
 A machine linked once is linked for every tool on it.
 
+## Delivery receipts
+
+A channel notification does not prove the model saw a message: the host can silently discard it
+when channels are disabled. The model confirms reading a pushed question with `aim_ack(msg_id)`;
+polling clients confirm it by collecting it with `aim_receive`. Only then does the local client
+send an `injected` receipt. Acknowledgment does not approve the requested work. An answer marks
+the question collected too, so it is not returned again by `aim_receive`.
+
 ## When something is off
 
 - **A second window in the same folder answers to `aim-2`.** On purpose: a fork, a second window

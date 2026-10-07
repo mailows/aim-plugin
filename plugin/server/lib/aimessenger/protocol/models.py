@@ -157,7 +157,16 @@ class Envelope(Signed):
 
 
 class Grant(Signed):
-    """Signed by *grantor*: *grantee*'s sessions may initiate traffic to grantor's sessions."""
+    """Signed by *grantor*: *grantee*'s sessions may initiate traffic to grantor's sessions.
+
+    Unknown fields are kept rather than refused. Clients up to 0.1.16 refused them, so a single
+    grant carrying a field added later (`autonomous`) would have broken grant sync for both
+    parties. Kept, a newer field still counts towards the signature - nobody can add or strip it
+    unnoticed - and an older client simply does not act on what it does not know, which can only
+    ever mean granting less.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, extra="allow")
 
     v: int = PROTOCOL_VERSION
     grant_id: str = Field(default_factory=new_id)

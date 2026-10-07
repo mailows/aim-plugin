@@ -14,7 +14,7 @@ from .config import aim_home
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS messages (
-    id          TEXT PRIMARY KEY,
+    id          TEXT NOT NULL,
     thread      TEXT,
     kind        TEXT NOT NULL,
     direction   TEXT NOT NULL,           -- in | out
@@ -25,10 +25,10 @@ CREATE TABLE IF NOT EXISTS messages (
     json        TEXT NOT NULL,
     state       TEXT NOT NULL,           -- out: sent|queued|delivered|answered|timeout ; in: received|injected|answered
     created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL
+    updated_at  TEXT NOT NULL,
+    collected_at TEXT,
+    PRIMARY KEY (id, direction)
 );
-CREATE INDEX IF NOT EXISTS messages_thread ON messages (thread, created_at);
-CREATE INDEX IF NOT EXISTS messages_state ON messages (direction, kind, state);
 CREATE TABLE IF NOT EXISTS grants (
     grant_id    TEXT PRIMARY KEY,
     grantor     TEXT NOT NULL,
@@ -71,6 +71,30 @@ CREATE TABLE IF NOT EXISTS peers (
 """
 
 
+MESSAGES_TABLE = """CREATE TABLE messages (
+    id          TEXT NOT NULL,
+    thread      TEXT,
+    kind        TEXT NOT NULL,
+    direction   TEXT NOT NULL,           -- in | out
+    from_ep     TEXT NOT NULL,
+    to_ep       TEXT NOT NULL,
+    reply_to    TEXT,
+    deadline    TEXT,
+    json        TEXT NOT NULL,
+    state       TEXT NOT NULL,           -- out: sent|queued|delivered|answered|timeout ; in: received|injected|answered
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL,
+    collected_at TEXT,
+    PRIMARY KEY (id, direction)
+);"""
+
+INDEXES = """
+CREATE INDEX IF NOT EXISTS messages_thread ON messages (thread, created_at);
+CREATE INDEX IF NOT EXISTS messages_state ON messages (direction, kind, state);
+CREATE INDEX IF NOT EXISTS messages_uncollected ON messages (to_ep, collected_at);
+"""
+
+
 class Store:
     def __init__(self, path: Path | None = None) -> None:
         self.path = path or (aim_home() / "store.sqlite")
@@ -80,9 +104,37 @@ class Store:
         self.conn.execute("PRAGMA busy_timeout=5000")
         self.conn.executescript(SCHEMA)
         self._migrate()
+        self.conn.executescript(INDEXES)
         self.conn.commit()
 
     def _migrate(self) -> None:
+        self._migrate_collected_at()
+        self._migrate_key_with_direction()
+
+    def _migrate_key_with_direction(self) -> None:
+        """Key messages by (id, direction), not by id alone.
+
+        All sessions on a machine share this store. When one of them wrote to another, the
+        sender saved the envelope as "out" and the recipient, receiving the same id, found it
+        already there, took it for a redelivery, acked it and dropped it: every message between
+        two sessions on one machine was lost. The two copies are different facts - "I sent it"
+        and "it reached me" - and now they are two rows.
+        """
+        pk = [r["name"] for r in self.conn.execute("PRAGMA table_info(messages)") if r["pk"]]
+        if pk != ["id"]:
+            return
+        self.conn.execute("ALTER TABLE messages RENAME TO messages_by_id")
+        self.conn.execute(MESSAGES_TABLE)
+        self.conn.execute(
+            "INSERT INTO messages (id, thread, kind, direction, from_ep, to_ep, reply_to, deadline,"
+            " json, state, created_at, updated_at, collected_at)"
+            " SELECT id, thread, kind, direction, from_ep, to_ep, reply_to, deadline, json, state,"
+            " created_at, updated_at, collected_at FROM messages_by_id"
+        )
+        self.conn.execute("DROP TABLE messages_by_id")
+        self.conn.executescript(INDEXES)
+
+    def _migrate_collected_at(self) -> None:
         """Add `collected_at`: when the model actually took a message in.
 
         Until now "arrived" and "the model has it" were one fact, kept in memory. A pull-only
@@ -112,7 +164,7 @@ class Store:
         self.conn.execute(
             "INSERT OR REPLACE INTO messages (id, thread, kind, direction, from_ep, to_ep, reply_to, deadline,"
             " json, state, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,"
-            " COALESCE((SELECT created_at FROM messages WHERE id = ?), ?), ?)",
+            " COALESCE((SELECT created_at FROM messages WHERE id = ? AND direction = ?), ?), ?)",
             (
                 env.id,
                 env.thread,
@@ -125,15 +177,27 @@ class Store:
                 json.dumps(env.to_wire()),
                 state,
                 env.id,
+                direction,
                 now,
                 now,
             ),
         )
         self.conn.commit()
 
-    def set_state(self, message_id: str, state: str) -> None:
+    def set_state(self, message_id: str, state: str, direction: str) -> None:
+        """`direction` is required: on a shared store the sender's and the recipient's copy of one
+        message have the same id, and only one of them is meant."""
         self.conn.execute(
-            "UPDATE messages SET state = ?, updated_at = ? WHERE id = ?",
+            "UPDATE messages SET state = ?, updated_at = ? WHERE id = ? AND direction = ?",
+            (state, now_iso(), message_id, direction),
+        )
+        self.conn.commit()
+
+    def finish_send(self, message_id: str, state: str) -> None:
+        """Settle a send without overwriting a receipt, answer or deadline that won the race."""
+        self.conn.execute(
+            "UPDATE messages SET state = ?, updated_at = ? WHERE id = ? AND direction = 'out'"
+            " AND state IN ('sending', 'uncertain')",
             (state, now_iso(), message_id),
         )
         self.conn.commit()
@@ -149,7 +213,7 @@ class Store:
         """
         self.conn.execute(
             "UPDATE messages SET state = 'delivered', updated_at = ?"
-            " WHERE id = ? AND state NOT IN ('answered', 'timeout', 'expired')",
+            " WHERE id = ? AND direction = 'out' AND state NOT IN ('answered', 'timeout', 'expired')",
             (now_iso(), message_id),
         )
         self.conn.commit()
@@ -181,36 +245,48 @@ class Store:
             return
         now = now_iso()
         self.conn.executemany(
-            "UPDATE messages SET collected_at = ?, updated_at = ? WHERE id = ?",
+            "UPDATE messages SET collected_at = ?, updated_at = ? WHERE id = ? AND direction = 'in'",
             [(now, now, mid) for mid in message_ids],
         )
         self.conn.commit()
 
-    def get_message(self, message_id: str) -> Envelope | None:
-        row = self.conn.execute("SELECT json FROM messages WHERE id = ?", (message_id,)).fetchone()
+    def get_message(self, message_id: str, direction: str) -> Envelope | None:
+        row = self.conn.execute(
+            "SELECT json FROM messages WHERE id = ? AND direction = ?", (message_id, direction)
+        ).fetchone()
         return Envelope.model_validate_json(row["json"]) if row else None
 
-    def message_state(self, message_id: str) -> tuple[str, str] | None:
+    def message_state(self, message_id: str, direction: str) -> str | None:
         row = self.conn.execute(
-            "SELECT direction, state FROM messages WHERE id = ?", (message_id,)
+            "SELECT state FROM messages WHERE id = ? AND direction = ?", (message_id, direction)
         ).fetchone()
-        return (row["direction"], row["state"]) if row else None
+        return row["state"] if row else None
 
-    def has_message(self, message_id: str) -> bool:
+    def has_message(self, message_id: str, direction: str) -> bool:
         return (
-            self.conn.execute("SELECT 1 FROM messages WHERE id = ?", (message_id,)).fetchone()
+            self.conn.execute(
+                "SELECT 1 FROM messages WHERE id = ? AND direction = ?", (message_id, direction)
+            ).fetchone()
             is not None
         )
 
     def thread(self, thread_id: str) -> list[dict[str, Any]]:
+        """Every message of a thread once. Two sessions of one machine in the same thread leave
+        both copies of each message here; the sender's is kept, which is how it was written."""
         rows = self.conn.execute(
-            "SELECT direction, state, json FROM messages WHERE thread = ? ORDER BY created_at",
+            "SELECT direction, state, json FROM messages WHERE thread = ?"
+            " ORDER BY created_at, direction DESC",
             (thread_id,),
         ).fetchall()
-        return [
-            {"direction": r["direction"], "state": r["state"], **json.loads(r["json"])}
-            for r in rows
-        ]
+        seen: set[str] = set()
+        out = []
+        for r in rows:
+            body = json.loads(r["json"])
+            if body.get("id") in seen:
+                continue
+            seen.add(body.get("id"))
+            out.append({"direction": r["direction"], "state": r["state"], **body})
+        return out
 
     def pending_incoming_asks(self, my_endpoint: str | None = None) -> list[dict[str, Any]]:
         # an expired question cannot be answered any more, so it is not pending either
@@ -226,7 +302,7 @@ class Store:
         ]
 
     def pending_outgoing_asks(self, my_endpoint: str | None = None) -> list[dict[str, Any]]:
-        sql = "SELECT direction, state, json FROM messages WHERE direction = 'out' AND kind = 'ask' AND state NOT IN ('answered','timeout')"
+        sql = "SELECT direction, state, json FROM messages WHERE direction = 'out' AND kind = 'ask' AND state NOT IN ('answered','timeout','failed')"
         args: list[Any] = []
         if my_endpoint:
             sql += " AND from_ep = ?"
@@ -239,7 +315,8 @@ class Store:
 
     def answers_for(self, ask_id: str) -> list[Envelope]:
         rows = self.conn.execute(
-            "SELECT json FROM messages WHERE reply_to = ? AND kind IN ('answer','error') ORDER BY created_at",
+            "SELECT json FROM messages WHERE reply_to = ? AND direction = 'in'"
+            " AND kind IN ('answer','error') ORDER BY created_at",
             (ask_id,),
         ).fetchall()
         return [Envelope.model_validate_json(r["json"]) for r in rows]

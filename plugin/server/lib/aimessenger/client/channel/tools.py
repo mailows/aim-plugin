@@ -131,10 +131,20 @@ TOOLS: list[types.Tool] = [
         annotations=_READ_ONLY,
     ),
     types.Tool(
+        name="aim_ack",
+        description="Confirm you read a message from a channel event, using its msg_id. Marks it "
+        "collected and sends a receipt for a question. Does not answer it or approve any action.",
+        input_schema={
+            "type": "object",
+            "properties": {"msg_id": {"type": "string"}},
+            "required": ["msg_id"],
+        },
+        annotations=_SENDS,
+    ),
+    types.Tool(
         name="aim_receive",
-        description="Messages that arrived but were not pushed into the conversation. Needed only "
-        "when this session runs without the channel flag, where nothing can wake you: call it to "
-        "collect what is waiting, optionally blocking for a while.",
+        description="Collect messages not yet acknowledged or answered, optionally waiting for "
+        "new ones. Use when channels are unavailable. Collecting a question sends a receipt.",
         input_schema={
             "type": "object",
             "properties": {
@@ -147,7 +157,7 @@ TOOLS: list[types.Tool] = [
                 }
             },
         },
-        annotations=_READ_ONLY,
+        annotations=_SENDS,
     ),
     types.Tool(
         name="aim_rename",
